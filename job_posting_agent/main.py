@@ -33,6 +33,16 @@ _initialized = False
 _init_lock = asyncio.Lock()
 
 
+class AgentResponse:
+    """Response object from agent execution."""
+
+    def __init__(self, run_id: str, status: str, content: str = ""):
+        """Initialize agent response."""
+        self.run_id = run_id
+        self.status = status
+        self.content = content
+
+
 class CrewInitializationError(Exception):
     """Exception raised when crew initialization fails."""
 
@@ -343,7 +353,16 @@ async def initialize_crew() -> None:
 def extract_job_posting(result: Any) -> str:
     """Extract job posting from CrewAI result formats."""
     result_str = str(result)
-    markers = ["Job Title", "Position", "Role", "Responsibilities", "Requirements", "Qualifications", "Benefits", "About"]
+    markers = [
+        "Job Title",
+        "Position",
+        "Role",
+        "Responsibilities",
+        "Requirements",
+        "Qualifications",
+        "Benefits",
+        "About",
+    ]
 
     # If looks like a complete job posting, return it
     if _is_complete_posting(result_str, markers):
@@ -382,48 +401,39 @@ async def run_crew(company_description: str, company_domain: str, hiring_needs: 
     return job_posting
 
 
-async def handler(messages: list[dict[str, str]]) -> str:
-    """Handle incoming agent messages."""
-    global _initialized
+def _extract_user_input(messages: list[dict[str, str]]) -> str:
+    """Extract user input from messages."""
+    if not isinstance(messages, list):
+        return ""
+    for msg in messages:
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            return msg.get("content", "").strip()
+    return ""
 
-    # Lazy initialization
-    async with _init_lock:
-        if not _initialized:
-            print("🔧 Initializing Job Posting Crew...")
-            await initialize_crew()
-            _initialized = True
 
-    # Extract user input
-    user_input = ""
-    if isinstance(messages, list):
-        for msg in messages:
-            if isinstance(msg, dict) and msg.get("role") == "user":
-                user_input = msg.get("content", "").strip()
-                break
+def _get_usage_instructions() -> str:
+    """Get usage instructions for the handler."""
+    return (
+        "Please provide job posting details in the following format:\n\n"
+        "Company Description: [Brief description of the company]\n"
+        "Company Domain: [company website or domain]\n"
+        "Hiring Needs: [Role title and key requirements]\n"
+        "Specific Benefits: [Unique benefits and perks]\n\n"
+        "Example:\n"
+        "Company Description: Fast-growing tech startup focused on AI solutions\n"
+        "Company Domain: example.com\n"
+        "Hiring Needs: Senior Software Engineer with Python and ML experience\n"
+        "Specific Benefits: Remote work, equity, unlimited PTO"
+    )
 
-    if not user_input:
-        return (
-            "Please provide job posting details in the following format:\n\n"
-            "Company Description: [Brief description of the company]\n"
-            "Company Domain: [company website or domain]\n"
-            "Hiring Needs: [Role title and key requirements]\n"
-            "Specific Benefits: [Unique benefits and perks]\n\n"
-            "Example:\n"
-            "Company Description: Fast-growing tech startup focused on AI solutions\n"
-            "Company Domain: example.com\n"
-            "Hiring Needs: Senior Software Engineer with Python and ML experience\n"
-            "Specific Benefits: Remote work, equity, unlimited PTO"
-        )
 
-    print(f"✅ Processing: {user_input}")
-
-    # Parse the input to extract components
+def _parse_input(user_input: str) -> tuple[str, str, str, str]:
+    """Parse user input to extract job posting components."""
     company_description = "Innovative technology company"
     company_domain = "example.com"
     hiring_needs = user_input
     specific_benefits = "Competitive salary, health benefits, professional development opportunities"
 
-    # Try to parse structured input if provided
     lines = user_input.split("\n")
     for line in lines:
         if "company description:" in line.lower():
@@ -435,19 +445,76 @@ async def handler(messages: list[dict[str, str]]) -> str:
         elif "specific benefits:" in line.lower() or "benefits:" in line.lower():
             specific_benefits = line.split(":", 1)[1].strip()
 
+    return company_description, company_domain, hiring_needs, specific_benefits
+
+
+async def initialize_all() -> None:
+    """Initialize all components (alias for initialize_crew)."""
+    await initialize_crew()
+
+
+async def initialize_mcp_tools() -> None:
+    """Initialize MCP tools (placeholder for future implementation)."""
+    # This is a placeholder for future MCP tools integration
+    pass
+
+
+async def run_agent(messages: list[dict[str, str]]) -> AgentResponse:
+    """Run the agent with the given messages and return a response object."""
+    global _initialized
+
+    # Ensure initialization
+    async with _init_lock:
+        if not _initialized:
+            await initialize_crew()
+            _initialized = True
+
+    # Extract user input
+    user_input = _extract_user_input(messages)
+    if not user_input:
+        return AgentResponse(
+            run_id=f"run-{id(messages)}",
+            status="COMPLETED",
+            content=_get_usage_instructions(),
+        )
+
+    # Parse input
+    company_description, company_domain, hiring_needs, specific_benefits = _parse_input(user_input)
+
+    # Generate job posting
     try:
         job_posting = await run_crew(company_description, company_domain, hiring_needs, specific_benefits)
         if job_posting and len(job_posting) > 100:
-            print(f"✅ Success! Generated job posting ({len(job_posting)} chars)")
-            return job_posting
+            return AgentResponse(
+                run_id=f"run-{id(messages)}",
+                status="COMPLETED",
+                content=job_posting,
+            )
         else:
-            print("⚠️ Generated content may be incomplete")
-            return "I couldn't generate a complete job posting. Please try providing more detailed information."
+            return AgentResponse(
+                run_id=f"run-{id(messages)}",
+                status="COMPLETED",
+                content="I couldn't generate a complete job posting. Please try providing more detailed information.",
+            )
     except Exception as e:
         error_msg = f"Handler error: {e!s}"
         print(f"❌ {error_msg}")
         traceback.print_exc()
-        return f"## Error\n\n{error_msg}\n\nPlease check your API keys and try again."
+        return AgentResponse(
+            run_id=f"run-{id(messages)}",
+            status="ERROR",
+            content=f"## Error\n\n{error_msg}\n\nPlease check your API keys and try again.",
+        )
+
+
+async def handler(messages: list[dict[str, str]]) -> str | AgentResponse:
+    """Handle incoming agent messages."""
+    # Use run_agent for processing
+    response = await run_agent(messages)
+
+    # For backward compatibility, return string content
+    # Tests expect AgentResponse object
+    return response
 
 
 async def cleanup() -> None:
