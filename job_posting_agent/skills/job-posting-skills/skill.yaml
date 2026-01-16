@@ -1,0 +1,397 @@
+# Job Posting Agent Skill
+# AI-powered job posting creator combining company research with role analysis and professional writing
+
+# Basic Metadata
+id: job-posting-agent-v1
+name: job-posting-agent
+version: 1.0.0
+author: thakurabhijeetsingh79@gmail.com
+
+# Description
+description: |
+  An AI-powered job posting assistant that creates compelling job descriptions
+  through multi-agent collaboration. This skill enables company culture research, role
+  requirement analysis, professional job description writing, and quality review. It analyzes
+  company values, identifies ideal candidate profiles, and delivers polished, engaging job
+  postings that attract top talent.
+
+# Tags and Modes
+tags:
+  - job-posting
+  - recruitment
+  - hiring
+  - hr-automation
+  - job-description
+  - talent-acquisition
+  - company-culture
+  - role-analysis
+  - candidate-targeting
+  - professional-writing
+
+input_modes:
+  - text/plain
+  - application/json
+
+output_modes:
+  - text/plain
+  - application/json
+  - text/markdown
+
+# Example Queries
+examples:
+  - "Create a job posting for a Senior Software Engineer with Python and ML experience"
+  - "Write a compelling job description for a Marketing Manager role at a sustainable fashion startup"
+  - "Generate a job posting for a Product Designer position at a B2B SaaS company"
+  - "Draft a job posting for a DevOps Engineer at a fintech company with remote work options"
+  - "Create a job description for a Data Scientist role focused on healthcare analytics"
+
+# Detailed Capabilities
+capabilities_detail:
+  company_research:
+    supported: true
+    analysis_types:
+      - company_culture_analysis
+      - values_identification
+      - mission_understanding
+      - unique_selling_points
+      - employer_branding
+    outputs:
+      - culture_insights
+      - value_propositions
+      - attraction_factors
+
+  role_analysis:
+    supported: true
+    deliverables:
+      - technical_skills_identification
+      - soft_skills_assessment
+      - experience_requirements
+      - qualification_standards
+      - candidate_personas
+    focus_areas:
+      - skill_requirements
+      - experience_levels
+      - industry_knowledge
+      - cultural_fit
+      - growth_potential
+
+  job_writing:
+    supported: true
+    content_types:
+      - company_introductions
+      - role_descriptions
+      - responsibility_lists
+      - qualification_requirements
+      - benefits_descriptions
+      - application_instructions
+    features:
+      - engaging_tone
+      - culture_aligned
+      - candidate_focused
+      - seo_optimized
+      - ats_friendly
+
+  quality_review:
+    supported: true
+    components:
+      - clarity_assessment
+      - grammatical_accuracy
+      - tone_consistency
+      - culture_alignment
+      - engagement_optimization
+    criteria:
+      - readability_scores
+      - professional_standards
+      - completeness_check
+      - brand_consistency
+
+# Requirements
+requirements:
+  packages:
+    - crewai>=0.152.0
+    - bindu>=2026.1.7
+    - openai>=1.60.0
+    - python-dotenv>=1.0.1
+  system: []
+  min_memory_mb: 512
+  external_services:
+    - OpenAI API or OpenRouter API
+
+# Performance Metrics
+performance:
+  avg_processing_time_ms: 12000
+  avg_time_per_agent_ms: 4000
+  max_concurrent_requests: 3
+  memory_per_request_mb: 512
+  timeout_seconds: 120
+  agents_count: 3
+  scalability: horizontal
+
+# Tool Restrictions
+allowed_tools:
+  - CrewAI
+  - CompanyResearch
+  - RoleAnalysis
+  - JobWriting
+  - QualityReview
+  - Read
+  - Analyze
+  - Generate
+
+# Rich Documentation
+documentation:
+  overview: |
+    This agent specializes in job posting creation using a 3-agent crew system.
+    It orchestrates research analysts, job description writers, and review specialists
+    to create comprehensive, engaging job postings that attract qualified candidates.
+
+    The agent excels at understanding company culture, identifying ideal candidate
+    profiles, crafting compelling job descriptions, and ensuring professional quality
+    that resonates with target talent while maintaining brand consistency.
+
+  use_cases:
+    when_to_use:
+      - User needs a complete job posting for a role
+      - User wants to create compelling job descriptions
+      - User requests analysis of role requirements
+      - User needs company culture incorporated into postings
+      - User wants professionally polished job descriptions
+      - User asks for candidate-focused job postings
+      - User needs multiple job postings with consistent quality
+
+    when_not_to_use:
+      - Simple job title generation (use basic text generation)
+      - Resume screening or candidate evaluation (use ATS or screening tools)
+      - Salary benchmarking (use compensation analysis tools)
+      - Interview question generation (use interview prep agent)
+      - Candidate sourcing or outreach (use recruitment tools)
+      - Job posting distribution to job boards (use integration tools)
+      - Legal compliance review (use HR legal specialist)
+
+  input_structure: |
+    Accepts job posting briefs with role context:
+
+    {
+      "input": "Role description or hiring context",
+      "company_description": "Brief company overview",
+      "company_domain": "company.com",
+      "hiring_needs": "Role title and key requirements",
+      "specific_benefits": "Unique benefits and perks (optional)"
+    }
+
+    Query constraints:
+    - Max input length: 1000 characters
+    - Processing time: ~12-120 seconds
+    - Language: English primary
+    - Context depth: Brief to detailed
+
+  output_format: |
+    Comprehensive Job Posting:
+    {
+      "success": true,
+      "posting": {
+        "company_introduction": "About the company...",
+        "role_overview": "Position summary...",
+        "key_responsibilities": [
+          "Responsibility 1",
+          "Responsibility 2",
+          "Responsibility 3"
+        ],
+        "requirements": {
+          "technical_skills": ["Skill 1", "Skill 2"],
+          "experience": "Years and type of experience...",
+          "education": "Educational requirements...",
+          "soft_skills": ["Skill 1", "Skill 2"]
+        },
+        "benefits": [
+          "Benefit 1",
+          "Benefit 2",
+          "Benefit 3"
+        ],
+        "application_process": "How to apply..."
+      },
+      "metadata": {
+        "processing_time_ms": 12500,
+        "agents_used": 3,
+        "word_count": 450
+      }
+    }
+
+  error_handling:
+    - "Insufficient information: Requests more context about company or role"
+    - "API errors: Returns partial results with error details"
+    - "Timeout: Returns completed agent outputs with indication of incomplete work"
+    - "Missing required fields: Uses default values and notifies user"
+    - "Invalid company domain: Proceeds with description-based research"
+    - "Unclear role requirements: Infers from context or requests clarification"
+
+  examples:
+    - title: "Senior Software Engineer Job Posting"
+      input:
+        company_description: "Fast-growing tech startup focused on AI solutions"
+        company_domain: "example.com"
+        hiring_needs: "Senior Software Engineer with Python and ML experience"
+        specific_benefits: "Remote work, equity, unlimited PTO"
+      output:
+        success: true
+        posting:
+          company_introduction: "Join a fast-growing AI startup revolutionizing..."
+          role_overview: "We're seeking a Senior Software Engineer to lead..."
+          key_responsibilities:
+            - "Design and implement ML pipelines..."
+            - "Collaborate with cross-functional teams..."
+            - "Mentor junior engineers..."
+          requirements:
+            technical_skills: ["Python", "Machine Learning", "TensorFlow/PyTorch"]
+            experience: "5+ years in software engineering, 2+ years in ML"
+            soft_skills: ["Leadership", "Communication", "Problem-solving"]
+          benefits:
+            - "Fully remote work environment"
+            - "Competitive equity package"
+            - "Unlimited PTO policy"
+        metadata:
+          processing_time_ms: 13200
+          agents_used: 3
+          word_count: 520
+
+    - title: "Marketing Manager for Sustainable Fashion"
+      input:
+        company_description: "Sustainable fashion brand committed to ethical production"
+        hiring_needs: "Marketing Manager to lead brand campaigns"
+        specific_benefits: "Purpose-driven work, flexible schedule, industry discounts"
+      output:
+        success: true
+        posting:
+          company_introduction: "Leading sustainable fashion brand seeking..."
+          role_overview: "Drive marketing strategy for ethical fashion..."
+          key_responsibilities:
+            - "Develop and execute multi-channel campaigns..."
+            - "Build brand awareness in sustainability space..."
+            - "Manage marketing budget and team..."
+          requirements:
+            technical_skills: ["Digital marketing", "Social media", "Analytics"]
+            experience: "4+ years in marketing, preferably fashion/sustainability"
+        metadata:
+          processing_time_ms: 11800
+          agents_used: 3
+
+    - title: "Product Designer at B2B SaaS Company"
+      input:
+        hiring_needs: "Product Designer for enterprise SaaS platform"
+        company_description: "B2B SaaS company serving Fortune 500 clients"
+      output:
+        success: true
+        posting:
+          role_overview: "Shape the future of enterprise software design..."
+          key_responsibilities:
+            - "Create user-centered designs for complex workflows..."
+            - "Collaborate with product and engineering teams..."
+            - "Conduct user research and usability testing..."
+          requirements:
+            technical_skills: ["Figma", "Design Systems", "UX Research"]
+            experience: "3+ years in product design, B2B experience preferred"
+        metadata:
+          processing_time_ms: 12400
+
+  best_practices:
+    for_developers:
+      - "Provide detailed company descriptions for better culture alignment"
+      - "Specify role requirements clearly to get accurate qualification lists"
+      - "Include specific benefits to make postings more attractive"
+      - "Use company domain when available for richer research"
+      - "Monitor processing time and implement timeout handling"
+      - "Review generated content for company-specific terminology"
+
+    for_orchestrators:
+      - "Route job posting and hiring requests to this agent"
+      - "Chain with job board integration tools for distribution"
+      - "Consider query complexity for timeout settings (12-120s typical)"
+      - "Use with HR compliance tools for legal review"
+      - "Implement fallback to simpler templates for time-sensitive needs"
+      - "Monitor token usage as multi-agent workflows consume resources"
+      - "Combine with ATS systems for complete hiring workflow"
+
+  installation: |
+    Required packages:
+    pip install crewai bindu openai python-dotenv
+
+    Environment variables:
+    OPENAI_API_KEY=your_openai_api_key
+    OPENROUTER_API_KEY=your_openrouter_api_key  # Alternative to OpenAI
+    MODEL_NAME=openai/gpt-4o  # Optional, defaults to gpt-4o
+
+    For CrewAI multi-agent orchestration:
+    # No additional system dependencies required
+    # Uses CrewAI framework for agent coordination
+
+  versioning:
+    - version: "1.0.0"
+      date: "2026-01-16"
+      changes: "Initial release with 3-agent crew: research analyst, job writer, review specialist"
+    - version: "1.1.0"
+      status: "planned"
+      changes: "Add salary benchmarking and role competitiveness analysis"
+    - version: "1.2.0"
+      status: "planned"
+      changes: "Multi-language support and industry-specific templates"
+
+# Assessment fields for skill negotiation
+assessment:
+  keywords:
+    - job-posting
+    - job-description
+    - hiring
+    - recruitment
+    - talent-acquisition
+    - role-requirements
+    - company-culture
+    - job-listing
+    - candidate-profile
+    - qualifications
+    - responsibilities
+    - benefits
+    - hr-automation
+    - recruiting
+    - vacancy
+
+  specializations:
+    - domain: tech_roles
+      confidence_boost: 0.3
+    - domain: startup_hiring
+      confidence_boost: 0.3
+    - domain: remote_positions
+      confidence_boost: 0.2
+    - domain: senior_roles
+      confidence_boost: 0.2
+    - domain: creative_positions
+      confidence_boost: 0.2
+
+  anti_patterns:
+    - "resume screening"
+    - "candidate evaluation"
+    - "interview scheduling"
+    - "salary negotiation"
+    - "background checks"
+    - "applicant tracking"
+    - "job board posting"
+    - "recruiter sourcing"
+    - "legal compliance review"
+
+  complexity_indicators:
+    simple:
+      - "quick job description"
+      - "basic role posting"
+      - "simple requirements"
+      - "entry-level position"
+    medium:
+      - "job posting"
+      - "role description"
+      - "mid-level position"
+      - "specific requirements"
+      - "company culture alignment"
+    complex:
+      - "comprehensive job posting"
+      - "executive role"
+      - "specialized position"
+      - "multiple requirements"
+      - "detailed culture integration"
