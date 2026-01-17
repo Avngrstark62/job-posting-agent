@@ -194,6 +194,22 @@ async def initialize_crew() -> None:
         llm = MockLLM()
 
     # Define Agents for job posting workflow
+    parsing_agent = Agent(
+        role="Input Parser",
+        goal="Extract and structure job posting requirements from natural language input",
+        backstory=dedent(
+            """
+            You are an expert at understanding natural language job posting requests and
+            extracting key information such as company name, role details, requirements,
+            salary, benefits, and other relevant details. You excel at identifying implicit
+            information and structuring it for further processing.
+            """
+        ),
+        llm=llm,
+        allow_delegation=False,
+        verbose=False,
+    )
+
     research_agent = Agent(
         role="Research Analyst",
         goal="Analyze the company website and description to extract insights on culture, values, and specific needs",
@@ -241,102 +257,123 @@ async def initialize_crew() -> None:
     )
 
     # Define Tasks
+    parse_input_task = Task(
+        description=dedent(
+            """
+            Parse the following user input to extract job posting details: {user_input}
+
+            Extract and structure the following information:
+            1. Company Name/Domain: Identify the company name or domain mentioned
+            2. Company Description: Brief description or context about the company (if not provided, leave empty)
+            3. Role/Position: The job title or role being hired for
+            4. Requirements: Key qualifications, skills, experience level, GPA requirements, etc.
+            5. Compensation: Salary, equity, or other financial benefits mentioned
+            6. Benefits: Remote work, PTO, health benefits, and other perks
+            7. Special Notes: Any other important details (e.g., "freshers with demonstrated ability can apply")
+
+            Format your response as:
+            COMPANY_NAME: [extracted company name/domain]
+            COMPANY_DESCRIPTION: [brief description if available, otherwise "Not specified"]
+            ROLE: [job title]
+            REQUIREMENTS: [list of requirements]
+            COMPENSATION: [salary and equity details]
+            BENEFITS: [list of benefits and perks]
+            SPECIAL_NOTES: [any additional important information]
+
+            IMPORTANT: Extract ONLY what is explicitly mentioned or clearly implied in the input.
+            Do not make assumptions or add generic information.
+            """
+        ),
+        expected_output="Structured extraction of job posting components in the specified format.",
+        agent=parsing_agent,
+    )
+
     research_company_culture_task = Task(
         description=dedent(
             """
-            Analyze the company information provided: {company_description}
-            Company domain: {company_domain}
+            Analyze the company information from the parsed input (COMPANY_NAME and COMPANY_DESCRIPTION).
 
-            Focus on understanding:
-            1. Company culture, values, and mission
-            2. Unique selling points and achievements
+            Research and describe:
+            1. The company's culture, values, and mission
+            2. The industry/domain the company operates in
             3. What makes this company attractive to candidates
 
-            Compile a comprehensive report summarizing these insights, specifically
-            how they can be leveraged in a job posting to attract the right candidates.
-
-            IMPORTANT: Return only the research insights.
+            Provide insights that will help create a compelling job posting.
             """
         ),
         expected_output="A comprehensive report detailing the company's culture, values, mission, and unique selling points.",
         agent=research_agent,
+        context=[parse_input_task],
     )
 
     research_role_requirements_task = Task(
         description=dedent(
             """
-            Based on the hiring needs: {hiring_needs}, identify the key skills,
-            experiences, and qualities the ideal candidate should possess.
+            Based on the ROLE, REQUIREMENTS, and SPECIAL_NOTES from the parsed input,
+            develop a comprehensive analysis of the ideal candidate.
 
-            Consider:
-            1. Technical skills and qualifications required
+            Include:
+            1. Technical skills and qualifications
             2. Soft skills and personal qualities
-            3. Experience level and background
-            4. Industry-specific knowledge needed
+            3. Experience level and educational background
+            4. Industry-specific knowledge
+            5. Any special conditions or requirements
 
-            Prepare a detailed list of recommended job requirements and qualifications
-            that align with the company's needs and values.
-
-            IMPORTANT: Return only the requirements analysis.
+            Align these requirements with the company's culture and values.
             """
         ),
         expected_output="A detailed list of recommended skills, experiences, and qualities for the ideal candidate.",
         agent=research_agent,
-        context=[research_company_culture_task],
+        context=[parse_input_task, research_company_culture_task],
     )
 
     draft_job_posting_task = Task(
         description=dedent(
             """
-            Draft a comprehensive job posting for the role: {hiring_needs}
+            Create a comprehensive job posting using the COMPANY_NAME, ROLE, COMPENSATION,
+            BENEFITS, and REQUIREMENTS from the parsed input, along with insights from research.
 
-            Structure the posting with:
-            1. Compelling introduction about the company
-            2. Detailed role description and key responsibilities
+            Structure:
+            1. Engaging company introduction
+            2. Role description and key responsibilities
             3. Required skills and qualifications
-            4. Company benefits and unique opportunities: {specific_benefits}
+            4. Compensation and benefits (include specific details if provided)
             5. Application instructions
 
-            Ensure the tone aligns with the company culture and incorporates
-            the insights from the research. Make it engaging and attractive
-            to top talent.
-
-            IMPORTANT: Return the complete draft job posting in markdown format.
+            Write in a professional yet engaging tone that attracts top talent.
+            Format in markdown.
             """
         ),
         expected_output="A detailed, engaging job posting with introduction, role description, responsibilities, requirements, and benefits.",
         agent=writer_agent,
-        context=[research_role_requirements_task],
+        context=[parse_input_task, research_role_requirements_task],
     )
 
     review_and_edit_job_posting_task = Task(
         description=dedent(
             """
-            Review and refine the draft job posting for the role: {hiring_needs}
+            Review and polish the draft job posting for quality and accuracy.
 
-            Check for:
-            1. Clarity and readability
-            2. Grammatical accuracy and professional tone
-            3. Alignment with company culture and values
-            4. Engagement and appeal to target candidates
-            5. Completeness of information
+            Verify:
+            1. Clarity, readability, and professional tone
+            2. Grammatical accuracy
+            3. Alignment with company culture
+            4. All details from the parsed input are included (COMPENSATION, BENEFITS, REQUIREMENTS, ROLE, COMPANY_NAME)
+            5. Engaging and appealing to target candidates
 
-            Edit and polish the content to ensure it speaks directly to the
-            desired candidates and accurately reflects the role's unique
-            benefits and opportunities.
-
-            IMPORTANT: Return the final, polished job posting in markdown format.
+            Return the final polished job posting in markdown format.
             """
         ),
         expected_output="A polished, error-free job posting that is clear, engaging, and perfectly aligned with company culture and values. Formatted in markdown.",
         agent=review_agent,
-        context=[draft_job_posting_task],
+        context=[parse_input_task, draft_job_posting_task],
     )
 
     # Create the crew with the review task as the final output
     crew = Crew(
-        agents=[research_agent, writer_agent, review_agent],
+        agents=[parsing_agent, research_agent, writer_agent, review_agent],
         tasks=[
+            parse_input_task,
             research_company_culture_task,
             research_role_requirements_task,
             draft_job_posting_task,
@@ -347,7 +384,7 @@ async def initialize_crew() -> None:
         memory=False,
     )
 
-    print("✅ Job Posting Crew initialized")
+    print("✅ Job Posting Crew initialized (4 agents: Parser, Research, Writer, Reviewer)")
 
 
 def extract_job_posting(result: Any) -> str:
@@ -372,21 +409,18 @@ def extract_job_posting(result: Any) -> str:
     return _extract_from_outputs_or_blocks(result, result_str, markers)
 
 
-async def run_crew(company_description: str, company_domain: str, hiring_needs: str, specific_benefits: str) -> str:
+async def run_crew(user_input: str) -> str:
     """Run the crew and return the final job posting."""
     global crew
 
     if not crew:
         raise CrewExecutionError(CrewExecutionError.CREW_NOT_INITIALIZED)
 
-    print(f"📝 Running job posting crew for: {hiring_needs}")
+    print(f"📝 Running job posting crew for input: {user_input[:100]}...")
     try:
         result = crew.kickoff(
             inputs={
-                "company_description": company_description,
-                "company_domain": company_domain,
-                "hiring_needs": hiring_needs,
-                "specific_benefits": specific_benefits,
+                "user_input": user_input,
             }
         )
     except Exception as e:
@@ -427,27 +461,6 @@ def _get_usage_instructions() -> str:
     )
 
 
-def _parse_input(user_input: str) -> tuple[str, str, str, str]:
-    """Parse user input to extract job posting components."""
-    company_description = "Innovative technology company"
-    company_domain = "example.com"
-    hiring_needs = user_input
-    specific_benefits = "Competitive salary, health benefits, professional development opportunities"
-
-    lines = user_input.split("\n")
-    for line in lines:
-        if "company description:" in line.lower():
-            company_description = line.split(":", 1)[1].strip()
-        elif "company domain:" in line.lower():
-            company_domain = line.split(":", 1)[1].strip()
-        elif "hiring needs:" in line.lower():
-            hiring_needs = line.split(":", 1)[1].strip()
-        elif "specific benefits:" in line.lower() or "benefits:" in line.lower():
-            specific_benefits = line.split(":", 1)[1].strip()
-
-    return company_description, company_domain, hiring_needs, specific_benefits
-
-
 async def initialize_all() -> None:
     """Initialize all components (alias for initialize_crew)."""
     await initialize_crew()
@@ -478,12 +491,9 @@ async def run_agent(messages: list[dict[str, str]]) -> AgentResponse:
             content=_get_usage_instructions(),
         )
 
-    # Parse input
-    company_description, company_domain, hiring_needs, specific_benefits = _parse_input(user_input)
-
-    # Generate job posting
+    # Generate job posting using the parsing agent
     try:
-        job_posting = await run_crew(company_description, company_domain, hiring_needs, specific_benefits)
+        job_posting = await run_crew(user_input)
         if job_posting and len(job_posting) > 100:
             return AgentResponse(
                 run_id=f"run-{id(messages)}",
@@ -565,8 +575,8 @@ def main():
         os.environ["MODEL_NAME"] = args.model
 
     print("🤖 Job Posting Agent - Creating compelling job descriptions")
-    print("📝 Capabilities: Company research, role analysis, job posting creation, review & editing")
-    print("⚙️ Process: 3-agent crew with sequential workflow")
+    print("📝 Capabilities: Input parsing, company research, role analysis, job posting creation, review & editing")
+    print("⚙️ Process: 4-agent crew with sequential workflow")
 
     # Load configuration
     config = load_config()
